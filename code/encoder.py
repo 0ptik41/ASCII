@@ -66,7 +66,6 @@ def im2ascii(bw, im, nE, nC):
 	out = ''
 	ind = 0
 	lut = ind2sub(bw.shape)
-	
 	for row in bw:
 		for v in row:
 			[x,y] = lut[ind]
@@ -81,20 +80,49 @@ def im2ascii(bw, im, nE, nC):
 			out += '\n'
 	return out
 
+
+def check_args():
+	if len(sys.argv) < 2:
+		print('[!] Usage: python encoder.py [image/video]')
+		exit()
+	# Determine if image or video
+	f = sys.argv[-1]
+	ext = f.split('.')[-1]
+	img_types = ['jpeg','jpg','png']
+	vid_types = ['gif','mp4','avi']
+	
+	if ext in img_types:
+		# Load Image and Pre-process it
+		bw_im, img = pre_process(sys.argv[1])
+		data = im2ascii(bw_im, img, 3,1)
+		print(data)
+		
+	elif ext in vid_types:
+		# Break into many images and process one by one
+		if os.path.isdir('frames'):
+			os.system('rm -rf frames')
+		os.mkdir('frames')
+		os.system('ffmpeg -i '+f+" frames/out%03d.jpg")
+		# Process Each Frame and print to terminal
+		N = len(os.listdir('frames'))
+		print('[+] Processing %d Frames' % N)
+		for i in range(1,N):
+			bw, im = pre_process('frames/out%03d.jpg' % i)
+			print(im2ascii(bw,im,3,3))
+			# time.sleep(.05)
+			# os.system('clear')
+		os.system('rm -rf frames')
+
+
 def main():
 	# Check input Args
+	check_args()
 	if not os.path.isfile(sys.argv[1]):
 		print('[!!] Cannot find %s' % sys.argv[1])
 		exit()
-	# Load Image and Pre-process it
-	bw_im, img = pre_process(sys.argv[1])
-	if 3 > len(sys.argv) > 1:	
-		print(im2ascii(bw_im, img, 3,3))
-	elif len(sys.argv) >= 4:
-		n1 = int(sys.argv[2])
-		n2 = int(sys.argv[3])
-		print(im2ascii(bw_im, img, n1, n2))
-		
+
+
+	
 
 if __name__ == '__main__':
 	main()
