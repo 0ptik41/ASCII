@@ -15,7 +15,7 @@ colors = {str([1,0,0]):r, str([0,1,0]):g, str([0,0,1]):b,
 		  str([0,0,0]):k, str([1,1,1]):w}
 
 k1 = [[-1,2,-1],
-	  [ 2,3, 2],
+	  [ 2,4, 2],
 	  [-1,2,-1]]
 
 def ind2sub(dims):
@@ -29,10 +29,10 @@ def ind2sub(dims):
     return table
 
 def resize_img(name):
-	sz =  int(os.popen("stty size","r").read().split()[1])/2 - 10
+	sz =  int(os.popen("stty size","r").read().split()[1])/2 - 5
 	img = Image.open(name)
 	img.thumbnail((sz, sz), Image.ANTIALIAS)
-	return np.array(img).astype(np.uint8)
+	return np.array(img).astype(np.uint16)
 
 def pre_process(img_name):
 	img_in = np.array(plt.imread(img_name))
@@ -51,7 +51,7 @@ def pre_process(img_name):
 def im2ascii(bw, im, nE, nC):
 	# Edge Detection1
 	kernel = np.array([[0, -1*nE, 0],
-	                   [-1*nE, nC, -1*nE],
+	                   [-1*nE, 2*nC, -1*nE],
 	                   [0, -1*nE, 0]])
 	# Determine how to map ascii
 	crange = len(units)
@@ -62,7 +62,7 @@ def im2ascii(bw, im, nE, nC):
 	# Need to map printable chars to bw range
 	bw = ndi.convolve(bw,kernel)
 	# bw = bw[:,:] - mean
-	bitval = np.array(np.linspace(abs_min,abs_max,crange)).astype(np.uint8)
+	bitval = np.array(np.linspace(abs_min,abs_max,crange)).astype(np.uint16)
 	out = ''
 	ind = 0
 	lut = ind2sub(bw.shape)
@@ -80,6 +80,35 @@ def im2ascii(bw, im, nE, nC):
 			out += '\n'
 	return out
 
+def vid2ascii(fn):
+	# Break into many images and process one by one
+	if not os.path.isdir('frames'):
+		# os.system('rm -rf frames')
+		os.mkdir('frames')
+		os.system('ffmpeg -r 1/10 -i '+fn+" frames/out%03d.jpg")
+	# Process Each Frame and print to terminal
+	N = len(os.listdir('frames'))
+	# print('[+] Processing %d Frames' % N)
+	for i in range(1,N):
+		bw, im = pre_process('frames/out%03d.jpg' % i)
+		print('\n\n'+im2ascii(bw,im,6,2))
+	# os.system('rm -rf frames')
+
+def vid2txt(fn):
+	fout = fn.split('.')[0]+'.txt'
+	if not os.path.isfile(fout):
+		open(fout,'w').write('')
+	if not os.path.isdir('frames'):
+		os.mkdir('frames')
+		os.system('ffmpeg -r 1/5 -i '+fn+" frames/out%03d.jpg")
+	# Process Each Frame and print to terminal
+	N = len(os.listdir('frames'))
+	# print('[+] Processing %d Frames' % N)
+	for i in range(1,N):
+		bw, im = pre_process('frames/out%03d.jpg' % i)
+		ln = '\n\n%s\n\n' % im2ascii(bw,im,1,6)
+		open(fout,'a').write(ln)
+	# os.system('rm -rf frames')
 
 def check_args():
 	if len(sys.argv) < 2:
@@ -89,37 +118,24 @@ def check_args():
 	f = sys.argv[-1]
 	ext = f.split('.')[-1]
 	img_types = ['jpeg','jpg','png']
-	vid_types = ['gif','mp4','avi']
+	vid_types = ['gif','mp4','avi','MOV']
 	
 	if ext in img_types:
 		# Load Image and Pre-process it
-		bw_im, img = pre_process(sys.argv[1])
+		bw_im, img = pre_process(f)
 		data = im2ascii(bw_im, img, 3,1)
 		print(data)
-		
-	elif ext in vid_types:
-		# Break into many images and process one by one
-		if os.path.isdir('frames'):
-			os.system('rm -rf frames')
-		os.mkdir('frames')
-		os.system('ffmpeg -i '+f+" frames/out%03d.jpg")
-		# Process Each Frame and print to terminal
-		N = len(os.listdir('frames'))
-		print('[+] Processing %d Frames' % N)
-		for i in range(1,N):
-			bw, im = pre_process('frames/out%03d.jpg' % i)
-			print(im2ascii(bw,im,3,3))
-			# time.sleep(.05)
-			# os.system('clear')
-		os.system('rm -rf frames')
-
+	
+	elif ext in vid_types and '-save' not in sys.argv:
+		vid2ascii(f)
+	elif '-save' in sys.argv and  ext in vid_types:
+		vid2txt(f)
+	else:
+		print('[!] Unrecognized filetype: %s' % ext)
 
 def main():
 	# Check input Args
 	check_args()
-	if not os.path.isfile(sys.argv[1]):
-		print('[!!] Cannot find %s' % sys.argv[1])
-		exit()
 
 
 	
