@@ -9,4 +9,4 @@ I might try to tweak it so that it works better automatically on any given image
 
 using a bash loop:
 
-![rick]https://raw.githubusercontent.com/0ptik41/ASCII/master/art/cinema.gif)
+![rick](https://raw.githubusercontent.com/0ptik41/ASCII/master/art/cinema.gif)
